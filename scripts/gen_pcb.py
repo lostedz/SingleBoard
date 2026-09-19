@@ -27,6 +27,11 @@ What it produces is a placed, planed and unrouted board:
 There are NO tracks. Every signal is left as ratsnest. See hardware/README.md
 for what that means before ordering anything.
 
+Before it writes anything it checks that every schematic part has a placement,
+that every pad named in the netlist exists on its footprint, that no pad is
+left without a net, and that nothing hangs off the board outline. Afterwards it
+runs kicad-cli's DRC over what it wrote and exits non-zero on any error.
+
 Outputs hardware/singleboard.kicad_pcb.
 """
 
