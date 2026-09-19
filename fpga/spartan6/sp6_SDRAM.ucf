@@ -1,0 +1,90 @@
+//global system clock
+NET "CLK_50M_IN" 		LOC = A10 	| IOSTANDARD = LVTTL;
+//reset signal
+NET "sys_rst_n" 		LOC = R7 	| IOSTANDARD = LVTTL;
+//led_1 signal
+NET "led_1" 			LOC = T9 	| IOSTANDARD = LVTTL;
+//led_2 signal
+NET "led_2" 			LOC = R9 	| IOSTANDARD = LVTTL;
+
+//100M SDRAM Clock
+NET "SDCLK0" 			LOC = H1 	| IOSTANDARD = LVTTL;
+//SDCKE0
+NET "SDCKE0" 			LOC = J1 	| IOSTANDARD = LVTTL;
+//DQML
+NET "DQM[0]"			LOC = F3 	| IOSTANDARD = LVTTL;
+//DQMH
+NET "DQM[1]"			LOC = H2 	| IOSTANDARD = LVTTL;
+//CAS
+NET "CAS" 				LOC = H3 	| IOSTANDARD = LVTTL;
+//RAS
+NET "RAS" 				LOC = J4 	| IOSTANDARD = LVTTL;
+//SDWE
+NET "SDWE" 				LOC = G3 	| IOSTANDARD = LVTTL;
+//SDCS0
+NET "SDCS0" 			LOC = J3 	| IOSTANDARD = LVTTL;
+
+//Data[0]
+NET "Data[0]" 			LOC = A3 	| IOSTANDARD = LVTTL;
+//Data[1]
+NET "Data[1]" 			LOC = A2 	| IOSTANDARD = LVTTL;
+//Data[2]
+NET "Data[2]" 			LOC = B3 	| IOSTANDARD = LVTTL;
+//Data[3]
+NET "Data[3]" 			LOC = B2 	| IOSTANDARD = LVTTL;
+//Data[4]
+NET "Data[4]" 			LOC = C3 	| IOSTANDARD = LVTTL;
+//Data[5]
+NET "Data[5]" 			LOC = C2 	| IOSTANDARD = LVTTL;
+//Data[6]
+NET "Data[6]" 			LOC = D3 	| IOSTANDARD = LVTTL;
+//Data[7]
+NET "Data[7]" 			LOC = E3 	| IOSTANDARD = LVTTL;
+//Data[8]
+NET "Data[8]" 			LOC = G1 	| IOSTANDARD = LVTTL;
+//Data[9]
+NET "Data[9]" 			LOC = F1 	| IOSTANDARD = LVTTL;
+//Data[10]
+NET "Data[10]" 		LOC = F2 	| IOSTANDARD = LVTTL;
+//Data[11]
+NET "Data[11]" 		LOC = E1 	| IOSTANDARD = LVTTL;
+//Data[12]
+NET "Data[12]" 		LOC = E2 	| IOSTANDARD = LVTTL;
+//Data[13]
+NET "Data[13]" 		LOC = D1 	| IOSTANDARD = LVTTL;
+//Data[14]
+NET "Data[14]" 		LOC = C1 	| IOSTANDARD = LVTTL;
+//Data[15]
+NET "Data[15]" 		LOC = B1 	| IOSTANDARD = LVTTL;
+
+//Address[0]
+NET "Address[0]" 		LOC = L4 	| IOSTANDARD = LVTTL;
+//Address[1]
+NET "Address[1]" 		LOC = M3 	| IOSTANDARD = LVTTL;
+//Address[2]
+NET "Address[2]" 		LOC = M4 	| IOSTANDARD = LVTTL;
+//Address[3]
+NET "Address[3]" 		LOC = N3 	| IOSTANDARD = LVTTL;
+//Address[4]
+NET "Address[4]" 		LOC = R2 	| IOSTANDARD = LVTTL;
+//Address[5]
+NET "Address[5]" 		LOC = R1 	| IOSTANDARD = LVTTL;
+//Address[6]
+NET "Address[6]" 		LOC = P2 	| IOSTANDARD = LVTTL;
+//Address[7]
+NET "Address[7]" 		LOC = P1 	| IOSTANDARD = LVTTL;
+//Address[8]
+NET "Address[8]" 		LOC = N1 	| IOSTANDARD = LVTTL;
+//Address[9]
+NET "Address[9]" 		LOC = M1 	| IOSTANDARD = LVTTL;
+//Address[10]
+NET "Address[10]" 	LOC = L3 	| IOSTANDARD = LVTTL;
+//Address[11]
+NET "Address[11]" 	LOC = L1 	| IOSTANDARD = LVTTL;
+//Address[12]
+NET "Address[12]" 	LOC = K1 	| IOSTANDARD = LVTTL;
+
+//Bank[0]
+NET "Bank[0]" 			LOC = K3 	| IOSTANDARD = LVTTL;
+//Bank[1]
+NET "Bank[1]" 			LOC = K2 	| IOSTANDARD = LVTTL;

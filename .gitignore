@@ -1,0 +1,8 @@
+build/
+.tools/
+.upstream-j68/
+__pycache__/
+*.vcd
+*.kicad_prl
+*-backups/
+fp-info-cache

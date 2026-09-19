@@ -1,0 +1,14 @@
+rtl/j68/j68_addsub_32.v
+rtl/j68/j68_alu.v
+rtl/j68/j68_decode.v
+rtl/j68/j68_decode_rom.v
+rtl/j68/j68_dpram_2048x20.v
+rtl/j68/j68_flags.v
+rtl/j68/j68_loop.v
+rtl/j68/j68_mem_io.v
+rtl/j68/j68_test.v
+rtl/j68/cpu_j68.v
+rtl/m68000.v
+rtl/sdram_mt48lc16m16a2.v
+rtl/sdram_spartan6_clock.v
+rtl/uart_mmio.v
