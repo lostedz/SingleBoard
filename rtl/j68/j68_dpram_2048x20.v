@@ -40,7 +40,7 @@ module j68_dpram_2048x20
     parameter USE_CLK_ENA = 0;
 
     // Inferred block RAM
-    (* ram_style = "block" *) reg  [19:0] r_mem_blk [0:2047];
+    (* ram_style = "block", syn_ramstyle = "block_ram" *) reg  [19:0] r_mem_blk [0:2047];
 
     initial begin
         if (USE_CLK_ENA)

@@ -29,7 +29,7 @@ module j68_decode_rom
 
   
     // Inferred FPGA memory (simulation and synthesis)
-    (* rom_style = "block" *) reg  [35:0] r_mem_blk [0:255];
+    (* rom_style = "block", syn_romstyle = "block_rom" *) reg  [35:0] r_mem_blk [0:255];
     reg  [35:0] r_q;
     
     initial begin
