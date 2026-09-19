@@ -1,0 +1,19 @@
+set -tmpdir "build/spartan6/tmp"
+run
+-ifn build/spartan6/uart_mmio.prj
+-ifmt mixed
+-ofn build/spartan6/uart_mmio.ngc
+-ofmt NGC
+-p xc6slx16-2-ftg256
+-top uart_mmio
+-opt_mode Speed
+-opt_level 1
+-uc build/spartan6/uart_mmio.xcf
+-keep_hierarchy Yes
+-read_cores Yes
+-iobuf NO
+-bufg 0
+-ram_extract YES
+-ram_style Block
+-rom_extract YES
+-rom_style Block

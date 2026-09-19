@@ -1,0 +1,30 @@
+# Synplify project for the m68000 core. Run from the repository root:
+#   synplify_pro -batch build/synplify/m68000.prj
+project -new build/synplify/m68000
+add_file -verilog "rtl/j68/j68_addsub_32.v"
+add_file -verilog "rtl/j68/j68_alu.v"
+add_file -verilog "rtl/j68/j68_decode.v"
+add_file -verilog "rtl/j68/j68_decode_rom.v"
+add_file -verilog "rtl/j68/j68_dpram_2048x20.v"
+add_file -verilog "rtl/j68/j68_flags.v"
+add_file -verilog "rtl/j68/j68_loop.v"
+add_file -verilog "rtl/j68/j68_mem_io.v"
+add_file -verilog "rtl/j68/j68_test.v"
+add_file -verilog "rtl/j68/cpu_j68.v"
+add_file -verilog "rtl/m68000.v"
+add_file -constraint "build/synplify/m68000.sdc"
+set_option -technology SPARTAN6
+set_option -part XC6SLX16
+set_option -package FTG256
+set_option -speed_grade -2
+set_option -top_module m68000
+set_option -vlog_std v2001
+set_option -frequency 50
+set_option -maxfan 10000
+set_option -disable_io_insertion 1
+set_option -pipe 1
+set_option -retiming 0
+set_option -write_apr_constraint 0
+project -result_format edif
+project -result_file "build/synplify/m68000.edf"
+project -run

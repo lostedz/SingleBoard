@@ -53,9 +53,9 @@ def size_of(size, allowed, mnemonic, default='w'):
 class Encoder:
     """Encodes one instruction at `pc` against the current symbol table."""
 
-    def __init__(self, symbols, pc):
+    def __init__(self, symbols, pc, missing=None):
         self.symbols, self.pc = symbols, pc
-        self.parser = Parser(symbols, pc)
+        self.parser = Parser(symbols, pc, missing)
 
     # -- helpers ----------------------------------------------------------
     def operand(self, text, size='w'):

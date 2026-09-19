@@ -11,9 +11,10 @@ checks it against the committed vasm-built binaries byte for byte.
 See `scripts/asm68k_syntax.py` for what is deliberately missing.
 
 Directives: `org`, `dc.b/w/l`, `dcb`/`blk.b/w/l`, `ds.b/w/l`, `even`,
-`equ`, `=`, `end`. Branches and unsuffixed absolute addresses take the
-shortest encoding that fits, which is found by iterating the layout until
-it stops changing.
+`equ`, `=`, `end`. A label beginning with `.` is local to the preceding
+global label. Branches and unsuffixed absolute addresses take the shortest
+encoding that fits, which is found by iterating the layout until it stops
+changing.
 """
 from __future__ import annotations
 
@@ -28,6 +29,8 @@ from asm68k_encode import Encoder
 from asm68k_syntax import AsmError, Unresolved, evaluate, split_arguments
 
 SIZE_BYTES = {'b': 1, 'w': 2, 'l': 4}
+LABEL = re.compile(r'^([A-Za-z_.][A-Za-z0-9_.$]*):?(.*)$')
+# Everything up to the first ';' that is not inside a quoted string.
 COMMENT = re.compile(r"""^(?:[^;'"]|'(?:[^']|'')*'|"(?:[^"]|"")*")*""")
 
 
@@ -44,52 +47,69 @@ def parse(source):
     lines = []
     for number, raw in enumerate(source.splitlines(), 1):
         text = raw.rstrip()
-        body = text if not text.startswith('*') else ''
+        body = '' if text.startswith('*') else text
         match = COMMENT.match(body)
         body = match.group(0) if match else body
-        if not body.strip():
-            lines.append(Line(number, text, None, None, None, []))
-            continue
         label = None
-        if body[0] not in ' \t':
-            head, rest = re.match(r'^(\S+?)(?::|\b)(.*)$', body).groups()
-            label, body = head, rest
-            if not re.match(r'^[A-Za-z_.][A-Za-z0-9_.$]*$', label):
-                raise AsmError('line %d: %r is not a label' % (number, label))
+        if body[:1] not in ('', ' ', '\t'):
+            match = LABEL.match(body)
+            if not match:
+                raise AsmError('line %d: %r does not start with a label' % (number, text))
+            label, body = match.groups()
         parts = body.strip().split(None, 1)
-        mnemonic, size = None, None
-        arguments = []
+        mnemonic, size, arguments = None, None, []
         if parts:
             mnemonic = parts[0].lower()
-            if mnemonic not in ('=',) and '.' in mnemonic[1:]:
-                mnemonic, _, suffix = mnemonic.rpartition('.')
-                size = suffix
+            if '.' in mnemonic[1:]:
+                mnemonic, _, size = mnemonic.rpartition('.')
                 if size not in ('b', 'w', 'l', 's'):
                     raise AsmError('line %d: unknown size suffix .%s' % (number, size))
             if len(parts) > 1:
-                arguments = split_arguments(parts[1])
-                if arguments == ['']:
-                    arguments = []
+                arguments = [part for part in split_arguments(parts[1]) if part]
         lines.append(Line(number, text, label, mnemonic, size, arguments))
     return lines
+
+
+class Scope(dict):
+    """Symbol table where a `.name` label belongs to the last global label."""
+
+    prefix = ''
+
+    def qualify(self, name):
+        return self.prefix + name if name.startswith('.') else name
+
+    def __contains__(self, name):
+        return dict.__contains__(self, self.qualify(name))
+
+    def __getitem__(self, name):
+        return dict.__getitem__(self, self.qualify(name))
 
 
 class Pass:
     """The state built up by one layout pass over the source."""
 
     def __init__(self, symbols):
-        self.known = symbols
+        self.known = Scope(symbols)
         self.symbols = {}
         self.image = {}
         self.missing = set()
         self.spans = {}
         self.pc = 0
 
+    def define(self, label, value, line):
+        name = self.known.qualify(label)
+        if not label.startswith('.'):
+            self.known.prefix = label
+            name = label
+        if name in self.symbols:
+            raise AsmError('line %d: %r is defined twice' % (line.number, name))
+        self.symbols[name] = value
+
     def value(self, text, line):
         try:
             return evaluate(text, self.known, self.pc)
         except Unresolved as error:
-            self.missing.add(str(error))
+            self.missing.add(self.known.qualify(str(error)))
             return 0
         except AsmError as error:
             raise AsmError('line %d: %s' % (line.number, error))
@@ -98,23 +118,16 @@ class Pass:
         for offset, byte in enumerate(data):
             address = self.pc + offset
             if address in self.image:
-                raise AsmError('line %d: address %#x written twice' % (line.number, address))
+                raise AsmError('line %d: address %#x is written twice'
+                               % (line.number, address))
             self.image[address] = byte
-        self.spans[line.number] = (self.pc, bytes(data))
+        if data:
+            self.spans[line.number] = (self.pc, bytes(data))
         self.pc += len(data)
 
 
-def constant(pass_state, line):
-    """`label equ expr` and `label = expr`."""
-    if line.label is None:
-        raise AsmError('line %d: %s needs a label' % (line.number, line.mnemonic))
-    if len(line.arguments) != 1:
-        raise AsmError('line %d: %s takes one value' % (line.number, line.mnemonic))
-    pass_state.symbols[line.label] = pass_state.value(line.arguments[0], line)
-
-
-def define_constant(pass_state, line):
-    """`dc.b/w/l`, including strings in `dc.b`."""
+def define_constant(state, line):
+    """`dc.b/w/l`, including character strings in `dc.b`."""
     size = line.size or 'w'
     if size not in SIZE_BYTES:
         raise AsmError('line %d: dc does not take size .%s' % (line.number, size))
@@ -124,42 +137,43 @@ def define_constant(pass_state, line):
         if size == 'b' and len(text) > 1 and text[0] in '\'"' and text[-1] == text[0]:
             data += text[1:-1].replace(text[0] * 2, text[0]).encode('latin-1')
             continue
-        value = pass_state.value(text, line)
+        value = state.value(text, line)
         data += (value & (2 ** (8 * SIZE_BYTES[size]) - 1)).to_bytes(SIZE_BYTES[size], 'big')
-    pass_state.emit(data, line)
+    state.emit(data, line)
 
 
-def define_block(pass_state, line):
+def define_block(state, line, zeroed):
     """`blk`/`dcb` repeat a value; `ds` reserves zeroed space."""
     size = line.size or 'w'
     if size not in SIZE_BYTES:
-        raise AsmError('line %d: %s does not take size .%s' % (line.number, line.mnemonic, size))
+        raise AsmError('line %d: %s does not take size .%s'
+                       % (line.number, line.mnemonic, size))
     if not line.arguments:
         raise AsmError('line %d: %s needs a count' % (line.number, line.mnemonic))
-    count = pass_state.value(line.arguments[0], line)
-    value = pass_state.value(line.arguments[1], line) if len(line.arguments) > 1 else 0
+    count = state.value(line.arguments[0], line)
+    value = 0 if zeroed or len(line.arguments) < 2 else state.value(line.arguments[1], line)
     if count < 0:
         raise AsmError('line %d: negative block count' % line.number)
     unit = (value & (2 ** (8 * SIZE_BYTES[size]) - 1)).to_bytes(SIZE_BYTES[size], 'big')
-    pass_state.emit(unit * count, line)
+    state.emit(unit * count, line)
 
 
 def run_pass(lines, symbols):
     state = Pass(symbols)
     for line in lines:
         if line.mnemonic in ('equ', '='):
-            constant(state, line)
-            continue
-        if line.label is not None:
-            state.symbols[line.label] = state.pc
-        if line.mnemonic is None:
+            if line.label is None or len(line.arguments) != 1:
+                raise AsmError('line %d: %s takes a label and one value'
+                               % (line.number, line.mnemonic))
+            state.define(line.label, state.value(line.arguments[0], line), line)
             continue
         if line.mnemonic == 'org':
             if len(line.arguments) != 1:
                 raise AsmError('line %d: org takes one address' % line.number)
             state.pc = state.value(line.arguments[0], line)
-            if line.label is not None:
-                state.symbols[line.label] = state.pc
+        if line.label is not None:
+            state.define(line.label, state.pc, line)
+        if line.mnemonic in (None, 'org'):
             continue
         if line.mnemonic == 'end':
             break
@@ -170,17 +184,13 @@ def run_pass(lines, symbols):
         if line.mnemonic == 'dc':
             define_constant(state, line)
             continue
-        if line.mnemonic in ('blk', 'dcb'):
-            define_block(state, line)
-            continue
-        if line.mnemonic == 'ds':
-            define_block(state, Line(line.number, line.text, None, 'ds', line.size,
-                                     line.arguments[:1]))
+        if line.mnemonic in ('blk', 'dcb', 'ds'):
+            define_block(state, line, line.mnemonic == 'ds')
             continue
         if state.pc % 2:
             raise AsmError('line %d: instruction at odd address %#x'
                            % (line.number, state.pc))
-        encoder = Encoder(symbols, state.pc, state.missing)
+        encoder = Encoder(state.known, state.pc, state.missing)
         try:
             words = encoder.encode(line.mnemonic, line.size, line.arguments)
         except AsmError as error:
@@ -193,7 +203,7 @@ def run_pass(lines, symbols):
 
 
 def assemble(source, name='<source>'):
-    """Iterate the layout to a fixed point and return (origin, bytes, symbols)."""
+    """Iterate the layout to a fixed point; return (origin, image, symbols, spans)."""
     lines = parse(source)
     symbols, state = {}, None
     for _ in range(16):
@@ -207,25 +217,23 @@ def assemble(source, name='<source>'):
     if undefined:
         raise AsmError('%s: undefined symbol(s): %s' % (name, ', '.join(sorted(undefined))))
     if not state.image:
-        return 0, b'', symbols
+        return 0, b'', symbols, state.spans
     origin, end = min(state.image), max(state.image) + 1
     image = bytearray(end - origin)
     for address, byte in state.image.items():
         image[address - origin] = byte
-    return origin, bytes(image), symbols
+    return origin, bytes(image), symbols, state.spans
 
 
-def listing(source, origin, symbols, spans):
+def listing(source, symbols, spans):
     rows = []
     for line in parse(source):
         address, data = spans.get(line.number, (None, b''))
         column = '%06x' % address if data else '      '
-        bytes_shown = data[:8].hex(' ', 1)
-        rows.append('%s  %-23s %s' % (column, bytes_shown, line.text))
-    rows.append('')
-    rows.append('Symbols:')
-    for name in sorted(symbols, key=lambda item: (symbols[item], item)):
-        rows.append('    %08x  %s' % (symbols[name], name))
+        rows.append('%s  %-23s %s' % (column, data[:8].hex(' ', 1), line.text))
+    rows += ['', 'Symbols:']
+    rows += ['    %08x  %s' % (symbols[name], name)
+             for name in sorted(symbols, key=lambda item: (symbols[item], item))]
     return '\n'.join(rows) + '\n'
 
 
@@ -238,16 +246,15 @@ def main(argv=None):
     arguments = parser.parse_args(argv)
     text = arguments.source.read_text()
     try:
-        origin, image, symbols = assemble(text, arguments.source.name)
+        origin, image, symbols, spans = assemble(text, arguments.source.name)
     except AsmError as error:
         raise SystemExit('%s: %s' % (arguments.source, error))
     if arguments.output:
         arguments.output.parent.mkdir(parents=True, exist_ok=True)
         arguments.output.write_bytes(image)
     if arguments.listing:
-        state = run_pass(parse(text), symbols)
         arguments.listing.parent.mkdir(parents=True, exist_ok=True)
-        arguments.listing.write_text(listing(text, origin, symbols, state.spans))
+        arguments.listing.write_text(listing(text, symbols, spans))
     print('%s: %d bytes at %#08x' % (arguments.source, len(image), origin))
     return 0
 

@@ -259,14 +259,17 @@ def immediate_words(value, size):
 
 
 class Parser:
-    def __init__(self, symbols, here):
+    def __init__(self, symbols, here, missing=None):
         self.symbols, self.here = symbols, here
+        self.missing = missing if missing is not None else set()
 
     def number(self, text):
-        """Evaluate, reporting whether every symbol in it was known."""
+        """Evaluate, recording and reporting any symbol not known yet."""
         try:
             return evaluate(text, self.symbols, self.here), True
-        except Unresolved:
+        except Unresolved as error:
+            qualify = getattr(self.symbols, 'qualify', lambda name: name)
+            self.missing.add(qualify(str(error)))
             return 0, False
 
     def operand(self, text, size='w'):
